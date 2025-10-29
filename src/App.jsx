@@ -1,125 +1,74 @@
-import './App.css'
-import moveImag from './assets/hamburger.png'
-import { useState, useRef } from 'react'
+// import './App.css'
+// import moveImag from './assets/hamburger.png'
+// import DragDropUsingNpm from './Components/DragDropUsingNpm'
 
-function App() {
-  // ✅ Initial table data
-  const [data, setData] = useState([
-    { name: 'John', age: 25, city: 'New York', country: 'USA' },
-    { name: 'Maria', age: 30, city: 'London', country: 'UK' },
-    { name: 'Lee', age: 22, city: 'Seoul', country: 'South Korea' },
-    { name: 'Sara', age: 28, city: 'Sydney', country: 'Australia' },
-    { name: 'Ali', age: 35, city: 'Dubai', country: 'UAE' }
-  ])
 
-  // ✅ References to track which item is being dragged and where it's dragged over
-  const dragItem = useRef()
-  const dragOverItem = useRef()
+// function App() {
 
-  // ✅ To highlight the row currently being dragged (optional visual feedback)
-  const [draggingIndex, setDraggingIndex] = useState(null)
+//   return (
+//     <DragDropUsingNpm/>
+  
+//   )
+// }
 
-  // 🔹 Fires when drag starts on the move icon
-  const onDragStart = (e, index) => {
-    dragItem.current = index
-    setDraggingIndex(index)
+// export default App
 
-    // ✅ Clone the entire <tr> as a "ghost" preview
-    const row = e.target.closest('tr')
-    const dragGhost = row.cloneNode(true)
 
-    // Style the ghost element (so user sees a nice preview while dragging)
-    dragGhost.style.position = 'absolute'
-    dragGhost.style.top = '-9999px'
-    dragGhost.style.left = '-9999px'
-    dragGhost.style.width = `${row.offsetWidth}px`
 
-    // ✅ Make the preview visually stronger & readable
-    dragGhost.style.background = '#e0f7fa'        // light teal background
-    dragGhost.style.color = '#000'                // black text
-    dragGhost.style.border = '2px solid #009688'  // teal border
-    dragGhost.style.padding = '10px'
-    dragGhost.style.opacity = '0.95'              // almost full visibility
-    dragGhost.style.display = 'table'
-    dragGhost.style.borderCollapse = 'collapse'
-    dragGhost.style.fontWeight = 'bold'
+import {
+  DndContext,
+  closestCenter,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useState } from 'react';
 
-    // ✅ Append ghost to body so it can be used as drag image
-    document.body.appendChild(dragGhost)
-    e.dataTransfer.setDragImage(dragGhost, 0, 0)
+function SortableItem({ id }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
-    // ✅ Remove ghost right after drag starts (browser keeps an internal copy)
-    setTimeout(() => document.body.removeChild(dragGhost), 0)
-  }
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    padding: "10px",
+    margin: "5px 0",
+    background: "#f0f0f0",
+    border: "1px solid #ccc",
+  };
 
-  // 🔹 Fires when dragging enters another row
-  const onDragEnter = (e, index) => {
-    dragOverItem.current = index
-  }
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      🧱 Item {id}
+    </div>
+  );
+}
 
-  // 🔹 Fires when dragged item is dropped
-  const onDrop = () => {
-    // ✅ Copy data and reorder based on drag positions
-    const copyData = [...data]
-    const draggedItem = copyData.splice(dragItem.current, 1)[0]
-    copyData.splice(dragOverItem.current, 0, draggedItem)
+export default function App() {
+  const [items, setItems] = useState(['A', 'B', 'C', 'D']);
 
-    // ✅ Update state (to re-render the table)
-    setData(copyData)
+  function handleDragEnd(event) {
+    const { active, over } = event;
 
-    // ✅ Reset refs and highlight
-    dragItem.current = null
-    dragOverItem.current = null
-    setDraggingIndex(null)
-  }
-
-  // 🔹 Fires when dragging ends (even if not dropped)
-  const onDragEnd = () => {
-    setDraggingIndex(null)
+    if (active.id !== over.id) {
+      setItems((items) => {
+        const oldIndex = items.indexOf(active.id);
+        const newIndex = items.indexOf(over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
   }
 
   return (
-    <table border={1}>
-      <thead>
-        <tr>
-          <th></th>
-          <th>Name</th>
-          <th>Age</th>
-          <th>City</th>
-          <th>Country</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {data.map((item, index) => (
-          <tr
-            key={index}
-            draggable={false}  // ✅ Prevent accidental drag from row itself
-            onDragOver={(e) => e.preventDefault()}  // ✅ Allow drop event
-            onDragEnter={(e) => onDragEnter(e, index)}
-            onDrop={onDrop}
-            className={draggingIndex === index ? 'dragging' : ''} // Optional row highlight
-          >
-            <td>
-              {/* 🔹 This image acts as the "drag handle" */}
-              <img
-                src={moveImag}
-                alt="move"
-                draggable
-                onDragStart={(e) => onDragStart(e, index)}
-                onDragEnd={onDragEnd}
-                style={{ cursor: 'move', width: '28px', height: '28px' }}
-              />
-            </td>
-            <td>{item.name}</td>
-            <td>{item.age}</td>
-            <td>{item.city}</td>
-            <td>{item.country}</td>
-          </tr>
+    <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={items} strategy={verticalListSortingStrategy}>
+        {items.map((id) => (
+          <SortableItem key={id} id={id} />
         ))}
-      </tbody>
-    </table>
-  )
+      </SortableContext>
+    </DndContext>
+  );
 }
-
-export default App
